@@ -22,14 +22,14 @@ export interface DecentAdminHat extends DecentHat {
 
 type RoleTerm = {
   nominee: Address;
-  termEndDate: Date;
+  termEndDate: Date | null;
   termNumber: number;
 };
 
 export type DecentRoleHatTerms = {
   allTerms: RoleTerm[];
-  currentTerm: (RoleTerm & { isActive: boolean | undefined }) | undefined;
-  nextTerm: RoleTerm | undefined;
+  currentTerm: (RoleTerm & { isActive?: boolean }) | undefined;
+  nextTerm?: RoleTerm;
   expiredTerms: RoleTerm[];
 };
 
@@ -63,16 +63,16 @@ export interface SablierPayment {
   amount: BigIntValuePair;
   startDate: Date;
   endDate: Date;
-  cliffDate: Date | undefined;
+  cliffDate?: Date;
   withdrawableAmount: bigint;
   isCancelled: boolean;
   cancelable: boolean;
 }
 
 export interface SablierPaymentFormValues extends Partial<SablierPayment> {
-  isCancelling: boolean;
+  isCancelling?: boolean;
   isValidatedAndSaved?: boolean;
-  cancelable: boolean;
+  cancelable?: boolean;
 }
 
 export interface RoleProps {
@@ -84,13 +84,9 @@ export interface RoleProps {
   isMemberTermPending?: boolean;
 }
 
-export interface RoleEditProps
-  extends Omit<
-    RoleProps,
-    'hatId' | 'handleRoleClick' | 'paymentsCount' | 'name' | 'currentRoleTermStatus'
-  > {
-  name?: string;
+export interface RoleEditProps {
   handleRoleClick: () => void;
+  name?: string;
   editStatus?: EditBadgeStatus;
   payments?: SablierPaymentFormValues[];
 }
@@ -116,13 +112,15 @@ export enum EditBadgeStatus {
   NewTermedRole,
   Inactive,
 }
+
 export const BadgeStatus: Record<EditBadgeStatus, string> = {
   [EditBadgeStatus.Updated]: 'updated',
   [EditBadgeStatus.New]: 'new',
   [EditBadgeStatus.Removed]: 'removed',
   [EditBadgeStatus.NewTermedRole]: 'newTermedRole',
-  [EditBadgeStatus.Inactive]: 'Inactive',
+  [EditBadgeStatus.Inactive]: 'inactive',
 };
+
 export const BadgeStatusColor: Record<EditBadgeStatus, string> = {
   [EditBadgeStatus.Updated]: 'color-lilac-100',
   [EditBadgeStatus.New]: 'color-green-500',
@@ -138,11 +136,12 @@ export enum RoleFormTermStatus {
   Expired,
   Pending,
 }
+
 export interface HatStruct {
-  maxSupply: 1; // No more than this number of wearers. Hardcode to 1
-  details: string; // IPFS url/hash to JSON { version: '1.0', data: { name, description, ...arbitraryData } }
+  readonly maxSupply: 1; // literal enforced
+  details: string; // IPFS JSON { version: '1.0', data: { name, description, ... } }
   imageURI: string;
-  isMutable: boolean; // true
+  isMutable: boolean;
   wearer: Address;
   termEndDateTs: bigint; // 0 for non-termed roles
 }
@@ -178,19 +177,15 @@ export interface EditedRole {
 export interface RoleHatFormValue
   extends Partial<Omit<DecentRoleHat, 'id' | 'wearerAddress' | 'payments' | 'roleTerms'>> {
   id: Hex;
-  // The user-input field that could either be an address or an ENS name.
-  wearer?: string;
-  // Not a user-input field.
-  // `resolvedWearer` is dynamically set from the resolved address of `wearer`, in case it's an ENS name.
-  resolvedWearer?: Address;
-  payments: SablierPaymentFormValues[];
-  // form specific state
+  wearerInput?: string; // user input, could be ENS
+  resolvedWearer?: Address; // resolved address
+  payments?: SablierPaymentFormValues[];
   editedRole?: EditedRole;
   roleEditingPaymentIndex?: number;
   isTermed?: boolean;
   roleTerms?: {
     nominee?: string;
-    termEndDate?: Date;
+    termEndDate?: Date | null;
     termNumber: number;
   }[];
   canCreateProposals: boolean;
@@ -232,8 +227,8 @@ export interface RoleDetailsDrawerProps {
 }
 
 export interface RolesStoreData {
-  hatsTreeId: undefined | null | StoreSlice<number>;
-  hatsTree: undefined | null | DecentTree;
+  hatsTreeId?: StoreSlice<number> | null;
+  hatsTree?: DecentTree | null;
   streamsFetched: boolean;
   contextChainId: number | null;
 }
@@ -258,7 +253,7 @@ export interface RolesStore extends RolesStoreData {
     sablierSubgraphClient: Client;
     whitelistingVotingStrategy?: Address;
   }) => Promise<void>;
-  refreshWithdrawableAmount: (hatId: Hex, streamId: string, publicClient: PublicClient) => void;
+  refreshWithdrawableAmount: (hatId: Hex, streamId: string, publicClient: PublicClient) => Promise<void>;
   updateCurrentTermStatus: (hatId: Hex, termStatus: 'active' | 'inactive') => void;
   resetRoles: () => void;
 }
